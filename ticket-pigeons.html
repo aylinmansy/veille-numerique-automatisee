@@ -25,10 +25,26 @@
     button:hover { background:#ffffff1a; }
     button.primary { color:#142018; border:0; background:linear-gradient(135deg,#a9f4d8,#75e3ce); }
     .result { min-height:32px; margin:16px 0 0; font-size:1.2rem; font-weight:750; }
-    .result.win { color:var(--gold); }
-    .result.lose { color:#d5dcf2; }
     .rules { margin:16px auto 0; max-width:480px; color:var(--muted); font-size:.88rem; line-height:1.55; }
+    .celebration[hidden] { display:none; }
+    .celebration { position:fixed; z-index:10; inset:0; display:grid; place-items:center; overflow:hidden; padding:24px; background:#080d1ded; backdrop-filter:blur(8px); }
+    .celebration-card { position:relative; z-index:1; width:min(760px,100%); padding:clamp(28px,7vw,64px) 18px; border:1px solid #ffd97855; border-radius:30px; background:linear-gradient(145deg,#26365ddd,#17213beF); box-shadow:0 25px 100px #0009; text-align:center; }
+    .win-message { margin:0; color:var(--gold); font-size:clamp(2.8rem,11vw,7rem); font-weight:950; line-height:.98; letter-spacing:-.065em; text-wrap:balance; text-shadow:0 6px 35px #ffd97855; }
+    .lose-pigeons { display:flex; justify-content:center; align-items:center; gap:clamp(4px,4vw,30px); font-size:clamp(3.5rem,15vw,8rem); }
+    .lose-pigeons span { display:inline-block; animation:sob 1.1s ease-in-out infinite alternate; }
+    .lose-pigeons span:nth-child(2) { animation-delay:.2s; }
+    .lose-pigeons span:nth-child(3) { animation-delay:.4s; }
+    .overlay-button { margin-top:26px; }
+    .flyer { position:absolute; z-index:0; font-size:clamp(2rem,5vw,3.5rem); pointer-events:none; animation:fly 7s linear infinite; }
+    .flyer:nth-of-type(1) { top:13%; left:-10%; animation-delay:-1s; }
+    .flyer:nth-of-type(2) { top:28%; left:-15%; animation-delay:-3.5s; font-size:2.5rem; }
+    .flyer:nth-of-type(3) { top:63%; left:-12%; animation-delay:-5s; }
+    .flyer:nth-of-type(4) { top:78%; left:-16%; animation-delay:-2.2s; font-size:2.3rem; }
+    .flyer:nth-of-type(5) { top:45%; left:-14%; animation-delay:-6s; }
+    @keyframes fly { 0% { transform:translateX(-10vw) translateY(15px) rotate(-12deg); } 50% { transform:translateX(55vw) translateY(-45px) rotate(8deg); } 100% { transform:translateX(120vw) translateY(10px) rotate(-8deg); } }
+    @keyframes sob { from { transform:translateY(0) rotate(-5deg); } to { transform:translateY(10px) rotate(5deg); } }
     @media(max-width:420px) { .ticket { gap:7px; padding:10px; } .slot { min-height:100px; } }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; } }
   </style>
 </head>
 <body>
@@ -52,12 +68,31 @@
       <p class="rules">Règle : il faut obtenir exactement trois pigeons noirs (🐦‍⬛) pour gagner. Les colombes blanches (🕊️) ne rapportent rien. Aucun prix réel : c’est un jeu de démonstration.</p>
     </section>
   </main>
+
+  <section class="celebration" id="celebration" role="dialog" aria-modal="true" aria-live="assertive" aria-label="Résultat du ticket" hidden>
+    <span class="flyer" aria-hidden="true">🐦‍⬛</span>
+    <span class="flyer" aria-hidden="true">🕊️</span>
+    <span class="flyer" aria-hidden="true">🐦‍⬛</span>
+    <span class="flyer" aria-hidden="true">🕊️</span>
+    <span class="flyer" aria-hidden="true">🐦‍⬛</span>
+    <div class="celebration-card">
+      <h2 class="win-message" id="winMessage" hidden>t’as gagné bebew</h2>
+      <div class="lose-pigeons" id="losePigeons" aria-label="Pigeons qui pleurent" hidden>
+        <span aria-hidden="true">🐦‍⬛😭</span><span aria-hidden="true">🕊️😭</span><span aria-hidden="true">🐦‍⬛😭</span>
+      </div>
+      <button class="primary overlay-button" id="closeResult">Continuer</button>
+    </div>
+  </section>
+
   <script>
     const canvas = document.querySelector('#scratch');
     const ctx = canvas.getContext('2d');
     const ticket = document.querySelector('#ticket');
     const result = document.querySelector('#result');
     const pigeons = [...document.querySelectorAll('.bird')];
+    const celebration = document.querySelector('#celebration');
+    const winMessage = document.querySelector('#winMessage');
+    const losePigeons = document.querySelector('#losePigeons');
     let scratching = false;
     let revealed = false;
 
@@ -87,14 +122,24 @@
       ctx.globalCompositeOperation = 'destination-out';
     }
     function showResult() {
+      if (revealed) return;
       revealed = true;
       canvas.style.display = 'none';
       const won = pigeons.every(pigeon => pigeon.dataset.color === 'black');
       result.className = `result ${won ? 'win' : 'lose'}`;
       result.textContent = won ? '🎉 Trois pigeons noirs : gagné !' : '🐦 Pas trois pigeons noirs : perdu !';
+      winMessage.hidden = !won;
+      losePigeons.hidden = won;
+      celebration.hidden = false;
+      document.querySelector('#closeResult').focus();
+    }
+    function closeResult() {
+      celebration.hidden = true;
+      document.querySelector('#newGame').focus();
     }
     function newTicket() {
       revealed = false;
+      celebration.hidden = true;
       canvas.style.display = 'block';
       result.className = 'result';
       result.textContent = 'Bonne chance !';
@@ -121,6 +166,9 @@
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(name => canvas.addEventListener(name, () => { scratching = false; }));
     document.querySelector('#reveal').addEventListener('click', showResult);
     document.querySelector('#newGame').addEventListener('click', newTicket);
+    document.querySelector('#closeResult').addEventListener('click', closeResult);
+    celebration.addEventListener('click', event => { if (event.target === celebration) closeResult(); });
+    window.addEventListener('keydown', event => { if (event.key === 'Escape' && !celebration.hidden) closeResult(); });
     window.addEventListener('resize', () => { if (!revealed) setCanvasSize(); });
     newTicket();
   </script>
