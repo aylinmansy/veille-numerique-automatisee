@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Horloge & minuteur</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:rgba(20,29,53,.82); --line:rgba(255,255,255,.1); --muted:#a9b5d0; --text:#f4f7ff; --accent:#8b9cff; --cyan:#68e0d0; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:32px 18px; color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:radial-gradient(ellipse at 20% 5%,#243261 0,transparent 42%),radial-gradient(ellipse at 95% 90%,#153d48 0,transparent 38%),var(--bg); }
+    main { width:min(920px,100%); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:22px; }
+    .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.16em; font-size:.72rem; font-weight:750; }
+    h1 { margin:6px 0 0; font-size:clamp(1.7rem,4vw,2.4rem); letter-spacing:-.04em; }
+    .badge { border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:8px 12px; font-size:.8rem; white-space:nowrap; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { min-height:340px; padding:clamp(22px,4vw,34px); border:1px solid var(--line); border-radius:24px; background:var(--panel); box-shadow:0 24px 70px #0005; backdrop-filter:blur(16px); }
+    .card-head { display:flex; align-items:center; gap:11px; color:var(--muted); font-size:.92rem; }
+    .icon { display:grid; place-items:center; width:36px; height:36px; border-radius:12px; color:var(--cyan); background:#68e0d018; font-size:1.15rem; }
+    .clock { margin:54px 0 8px; font-variant-numeric:tabular-nums; font-size:clamp(3.1rem,9vw,5.25rem); font-weight:650; letter-spacing:-.065em; line-height:1; }
+    .date { color:var(--muted); font-size:1rem; text-transform:capitalize; }
+    .timer-display { margin:34px 0 25px; text-align:center; font-variant-numeric:tabular-nums; font-size:clamp(3rem,8vw,4.7rem); font-weight:650; letter-spacing:-.06em; }
+    .inputs { display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:22px; }
+    .inputs input { width:82px; padding:11px 8px; color:var(--text); background:#0b1020; border:1px solid var(--line); border-radius:12px; text-align:center; font:inherit; font-size:1rem; outline:none; }
+    .inputs input:focus { border-color:var(--accent); box-shadow:0 0 0 3px #8b9cff22; }
+    .inputs span { color:var(--muted); font-size:.82rem; }
+    .actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
+    button { border:1px solid var(--line); border-radius:12px; padding:11px 18px; color:var(--text); background:#ffffff0b; font:inherit; font-weight:650; cursor:pointer; transition:transform .15s,background .15s; }
+    button:hover { transform:translateY(-1px); background:#ffffff16; }
+    button.primary { color:#10162b; background:linear-gradient(135deg,#a8b2ff,#74e5d6); border:0; }
+    button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+    .hint { margin:16px 0 0; color:var(--muted); text-align:center; font-size:.8rem; }
+    footer { display:flex; justify-content:flex-end; margin-top:16px; }
+    footer a { color:var(--muted); font-size:.82rem; text-decoration:none; }
+    footer a:hover { color:var(--text); }
+    @media(max-width:680px) { .grid { grid-template-columns:1fr; } .card { min-height:auto; } .clock { margin:38px 0 8px; } .timer-display { margin:28px 0 22px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><div class="eyebrow">Veille stratégique · Outils</div><h1>Horloge & minuteur</h1></div>
+      <div class="badge">Heure locale</div>
+    </header>
+    <section class="grid" aria-label="Horloge et minuteur">
+      <article class="card">
+        <div class="card-head"><span class="icon" aria-hidden="true">◷</span><span>Il est actuellement</span></div>
+        <div class="clock" id="clock" aria-live="off">--:--:--</div>
+        <div class="date" id="date">Chargement…</div>
+      </article>
+      <article class="card">
+        <div class="card-head"><span class="icon" aria-hidden="true">⏱</span><span>Minuteur</span></div>
+        <div class="timer-display" id="timer" role="timer" aria-live="polite">05:00</div>
+        <div class="inputs" aria-label="Durée du minuteur">
+          <input id="minutes" type="number" min="0" max="999" value="5" aria-label="Minutes">
+          <span>min</span>
+          <input id="seconds" type="number" min="0" max="59" value="0" aria-label="Secondes">
+          <span>sec</span>
+        </div>
+        <div class="actions">
+          <button class="primary" id="start">Démarrer</button>
+          <button id="reset">Réinitialiser</button>
+        </div>
+        <p class="hint" id="hint">Choisissez une durée, puis démarrez le compte à rebours.</p>
+      </article>
+    </section>
+    <footer><a href="code.html">Voir le code source →</a></footer>
+  </main>
+  <script>
+    const clockEl = document.querySelector('#clock');
+    const dateEl = document.querySelector('#date');
+    const timerEl = document.querySelector('#timer');
+    const minutesInput = document.querySelector('#minutes');
+    const secondsInput = document.querySelector('#seconds');
+    const startButton = document.querySelector('#start');
+    const resetButton = document.querySelector('#reset');
+    const hint = document.querySelector('#hint');
+    let remaining = 300;
+    let interval = null;
+
+    function updateClock() {
+      const now = new Date();
+      clockEl.textContent = new Intl.DateTimeFormat('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(now);
+      dateEl.textContent = new Intl.DateTimeFormat('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }).format(now);
+    }
+    function renderTimer() {
+      const min = Math.floor(remaining / 60).toString().padStart(2, '0');
+      const sec = (remaining % 60).toString().padStart(2, '0');
+      timerEl.textContent = `${min}:${sec}`;
+    }
+    function selectedDuration() {
+      const min = Math.max(0, Math.min(999, Number.parseInt(minutesInput.value, 10) || 0));
+      const sec = Math.max(0, Math.min(59, Number.parseInt(secondsInput.value, 10) || 0));
+      minutesInput.value = min;
+      secondsInput.value = sec;
+      return min * 60 + sec;
+    }
+    function stopTimer() {
+      clearInterval(interval);
+      interval = null;
+      startButton.textContent = 'Reprendre';
+    }
+    function finishTimer() {
+      stopTimer();
+      remaining = 0;
+      renderTimer();
+      startButton.disabled = true;
+      hint.textContent = 'Temps écoulé !';
+      document.title = 'Temps écoulé · Horloge & minuteur';
+      try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Minuteur terminé', { body:'Le compte à rebours est terminé.' }); } catch (_) {}
+    }
+    startButton.addEventListener('click', () => {
+      if (interval) { stopTimer(); hint.textContent = 'Minuteur en pause.'; return; }
+      if (remaining <= 0) remaining = selectedDuration();
+      if (remaining <= 0) { hint.textContent = 'Entrez une durée supérieure à zéro.'; return; }
+      startButton.disabled = false;
+      startButton.textContent = 'Pause';
+      hint.textContent = 'Compte à rebours en cours…';
+      interval = setInterval(() => {
+        remaining -= 1;
+        renderTimer();
+        if (remaining <= 0) finishTimer();
+      }, 1000);
+    });
+    resetButton.addEventListener('click', () => {
+      clearInterval(interval);
+      interval = null;
+      remaining = selectedDuration();
+      renderTimer();
+      startButton.disabled = false;
+      startButton.textContent = 'Démarrer';
+      hint.textContent = 'Choisissez une durée, puis démarrez le compte à rebours.';
+      document.title = 'Horloge & minuteur';
+    });
+    [minutesInput, secondsInput].forEach(input => input.addEventListener('change', () => {
+      if (!interval) { remaining = selectedDuration(); renderTimer(); }
+    }));
+    updateClock();
+    setInterval(updateClock, 1000);
+    renderTimer();
+  </script>
+</body>
+</html>
